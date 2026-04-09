@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from .models import IPLookupBatch
 from .serializers import IPLookupBatchSerializer, IPListSerializer
+from .tasks import fetch_ip_info
 
 
 class IPLookupBatchView(APIView):
@@ -20,8 +21,11 @@ class IPLookupBatchView(APIView):
         batch = IPLookupBatch.objects.create(
             ips=ips,
             total=len(ips),
-            status="processing",
+            status=IPLookupBatch.STATUS_PROCESSING,
         )
+
+        for ip in ips:
+            fetch_ip_info.delay(str(batch.id), ip)
 
         return Response(
             IPLookupBatchSerializer(batch).data,

@@ -1,4 +1,20 @@
 services:
+  backend:
+    container_name: backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+    depends_on:
+      - redis
+
   redis:
     container_name: redis
     image: redis:latest
@@ -22,6 +38,7 @@ services:
     networks:
       - app-network
     depends_on:
+      - backend
       - redis
 
   dozzle:
