@@ -31,3 +31,15 @@ class IPLookupBatch(Timestamp):
 
     def __str__(self):
         return f"Batch {self.id} [{self.status}]"
+
+
+class IPInfo(Timestamp):
+    ip = models.GenericIPAddressField()
+    data = models.JSONField(null=True, blank=True)
+    error = models.TextField(null=True, blank=True)
+    batch = models.ForeignKey(
+        IPLookupBatch, on_delete=models.CASCADE, related_name="results"
+    )
+
+    def __str__(self):
+        return f"{self.ip} (batch={self.batch.id})"

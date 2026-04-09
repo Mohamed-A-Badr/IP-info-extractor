@@ -1,6 +1,6 @@
 import ipaddress
 from rest_framework import serializers
-from .models import IPLookupBatch
+from .models import IPLookupBatch, IPInfo
 
 
 class IPListSerializer(serializers.Serializer):
@@ -25,3 +25,9 @@ class IPLookupBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = IPLookupBatch
         fields = ["id", "status", "total", "completed", "ips", "created_at"]
+
+
+class IPInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IPInfo
+        fields = ["ip", "data", "error", "created_at"]

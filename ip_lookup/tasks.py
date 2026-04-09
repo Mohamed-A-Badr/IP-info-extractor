@@ -2,6 +2,9 @@ import os
 
 import httpx
 from celery import shared_task
+from django.db.models import F
+
+from .models import IPInfo, IPLookupBatch
 
 API_TOKEN = os.getenv("IP_INFO_API_TOKEN", "")
 
@@ -24,4 +27,15 @@ def fetch_ip_info(self, batch_id: str, ip: str):
         data = None
         error = str(exc)
 
+    IPInfo.objects.create(batch_id=batch_id, ip=ip, error=error, data=data)
+
+    IPLookupBatch.objects.filter(id=batch_id).update(completed=F("completed") + 1)
+    batch = IPLookupBatch.objects.get(id=batch_id)
+
+    if batch.completed >= batch.total:
+        IPLookupBatch.objects.filter(id=batch_id).update(
+            status=IPLookupBatch.STATUS_COMPLETED
+        )
+
     print(data)
+    print(batch)
