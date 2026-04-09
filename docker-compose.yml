@@ -1,0 +1,59 @@
+services:
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  celery-worker:
+    container_name: celery-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+    depends_on:
+      - redis
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle-logs
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-network
+    environment:
+      - DOZZLE_NO_ANALYTICS=true
+      - DOZZLE_LEVEL=info
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis_data:
