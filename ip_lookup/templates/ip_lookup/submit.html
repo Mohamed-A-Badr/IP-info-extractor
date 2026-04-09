@@ -1,0 +1,108 @@
+{% extends "ip_lookup/base.html" %}
+{% block title %}Submit IPs — IP Info Extractor{% endblock %}
+
+{% block extra_head %}
+<style>
+  .form-card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.1); padding: 1.5rem; max-width: 520px; }
+  label { display: block; font-size: .9rem; font-weight: 600; margin-bottom: .4rem; }
+  textarea { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: .6rem; font-size: .9rem; font-family: monospace; resize: vertical; }
+  textarea:focus { outline: none; border-color: #1a1a2e; }
+  .hint { font-size: .78rem; color: #666; margin-top: .3rem; margin-bottom: 1rem; }
+  button[type=submit] { padding: .5rem 1.2rem; background: #1a1a2e; color: #fff; border: none; border-radius: 4px; font-size: .9rem; cursor: pointer; }
+  button[type=submit]:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom:1rem;">Submit IP Addresses</h2>
+
+<div class="form-card">
+  <div id="error-box" class="error-box"></div>
+
+  <form id="submit-form">
+    {% csrf_token %}
+    <label for="ip-list">IP Addresses</label>
+    <textarea id="ip-list" rows="10" placeholder="Enter one IP address per line&#10;&#10;8.8.8.8&#10;1.1.1.1&#10;..."></textarea>
+    <p class="hint">One IPv4 or IPv6 address per line. Invalid entries will be rejected.</p>
+    <button type="submit" id="submit-btn">Submit Batch</button>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById('submit-form');
+  const btn  = document.getElementById('submit-btn');
+  const errorBox = document.getElementById('error-box');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+
+    const raw = document.getElementById('ip-list').value;
+    const ips = raw.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+
+    if (ips.length === 0) {
+      showError('Please enter at least one IP address.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    try {
+      const res = await fetch('/api/ip-lookup/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({ ips }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // DRF returns validation errors as { field: [messages] }
+        const msgs = extractErrors(data);
+        showError(msgs);
+        btn.disabled = false;
+        btn.textContent = 'Submit Batch';
+        return;
+      }
+
+      // Redirect to home; batch is already processing
+      window.location.href = `/?batch_id=${data.id}`;
+
+    } catch (err) {
+      showError('Network error — please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit Batch';
+    }
+  });
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+  }
+
+  function showError(msg) {
+    errorBox.textContent = Array.isArray(msg) ? msg.join('\n') : msg;
+    errorBox.style.display = 'block';
+  }
+
+  function extractErrors(data) {
+    if (typeof data === 'string') return data;
+    const msgs = [];
+    for (const [key, val] of Object.entries(data)) {
+      const valMsgs = Array.isArray(val) ? val : [val];
+      valMsgs.forEach(m => {
+        if (typeof m === 'object') {
+          Object.values(m).flat().forEach(s => msgs.push(s));
+        } else {
+          msgs.push(key === 'non_field_errors' ? m : `${key}: ${m}`);
+        }
+      });
+    }
+    return msgs.length ? msgs : ['An unknown error occurred.'];
+  }
+</script>
+{% endblock %}

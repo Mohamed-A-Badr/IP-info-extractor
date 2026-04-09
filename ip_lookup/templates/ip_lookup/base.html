@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}IP Info Extractor{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
+    header { background: #1a1a2e; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 1.2rem; letter-spacing: .5px; }
+    header nav a { color: #aad4f5; text-decoration: none; margin-left: 1.5rem; font-size: .9rem; }
+    header nav a:hover { text-decoration: underline; }
+    main { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+    h2 { margin-bottom: 1rem; font-size: 1.3rem; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    th, td { padding: .65rem 1rem; text-align: left; border-bottom: 1px solid #eee; font-size: .9rem; }
+    th { background: #f0f0f0; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: .2rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; text-transform: capitalize; }
+    .badge-pending    { background: #fff3cd; color: #856404; }
+    .badge-processing { background: #cfe2ff; color: #084298; }
+    .badge-completed  { background: #d1e7dd; color: #0a3622; }
+    .badge-error      { background: #f8d7da; color: #842029; }
+    a.btn { display: inline-block; padding: .45rem 1rem; background: #1a1a2e; color: #fff; border-radius: 4px; text-decoration: none; font-size: .85rem; }
+    a.btn:hover { background: #2d2d5e; }
+    a.link { color: #0d6efd; text-decoration: none; font-size: .85rem; }
+    a.link:hover { text-decoration: underline; }
+    .error-box { background: #f8d7da; border: 1px solid #f5c2c7; color: #842029; padding: .75rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: .9rem; display: none; }
+    .msg-box { background: #d1e7dd; border: 1px solid #badbcc; color: #0a3622; padding: .75rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: .9rem; display: none; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <h1>IP Info Extractor</h1>
+    <nav>
+      <a href="{% url 'home' %}">Home</a>
+      <a href="{% url 'submit' %}">Submit IPs</a>
+      <a href="/api/docs/">API Docs</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

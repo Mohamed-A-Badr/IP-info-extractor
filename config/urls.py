@@ -20,8 +20,15 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from ip_lookup.views import home_view, submit_view, batch_detail_view
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # UI pages
+    path("", home_view, name="home"),
+    path("submit/", submit_view, name="submit"),
+    path("batch/<uuid:batch_id>/", batch_detail_view, name="batch-detail"),
+    # DRF API
     path("api/ip-lookup/", include("ip_lookup.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(), name="swagger-ui"),

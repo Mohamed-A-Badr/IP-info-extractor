@@ -1,0 +1,110 @@
+{% extends "ip_lookup/base.html" %}
+{% block title %}Batch Results — IP Info Extractor{% endblock %}
+
+{% block extra_head %}
+<style>
+  .meta { font-size: .85rem; color: #666; margin-bottom: 1rem; font-family: monospace; }
+  #results-table td { vertical-align: top; }
+  .data-grid { display: grid; grid-template-columns: max-content 1fr; gap: .1rem .75rem; font-size: .82rem; }
+  .data-key   { color: #666; }
+  .data-val   { color: #222; word-break: break-all; }
+  .loading-row td { text-align: center; color: #888; padding: 2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2>Batch Results</h2>
+  <a href="{% url 'home' %}" class="link">&larr; Back to Batches</a>
+</div>
+
+<p class="meta">Batch ID: {{ batch_id }}</p>
+
+<div id="error-box" class="error-box"></div>
+
+<table id="results-table">
+  <thead>
+    <tr>
+      <th>IP Address</th>
+      <th>Country</th>
+      <th>Continent</th>
+      <th>ASN</th>
+      <th>AS Name</th>
+      <th>AS Domain</th>
+      <th>Error</th>
+    </tr>
+  </thead>
+  <tbody id="results-body">
+    <tr class="loading-row"><td colspan="7">Loading results…</td></tr>
+  </tbody>
+</table>
+
+<script>
+  const BATCH_ID = "{{ batch_id }}";
+
+  async function loadResults() {
+    try {
+      const res = await fetch(`/api/ip-lookup/${BATCH_ID}`);
+
+      if (!res.ok) {
+        showError(`Failed to load results (HTTP ${res.status}).`);
+        return;
+      }
+
+      const items = await res.json();
+      renderTable(items);
+
+    } catch (err) {
+      showError('Network error — could not load results.');
+    }
+  }
+
+  function renderTable(items) {
+    const tbody = document.getElementById('results-body');
+
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:2rem;">No results found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+      const d = item.data || {};
+      const country   = d.country_code ? `${d.country} (${d.country_code})` : '—';
+      const continent = d.continent_code ? `${d.continent} (${d.continent_code})` : '—';
+      const asn       = d.asn       || '—';
+      const asName    = d.as_name   || '—';
+      const asDomain  = d.as_domain || '—';
+      const errText   = item.error
+        ? `<span style="color:#842029;font-size:.8rem;">${escHtml(item.error)}</span>`
+        : '<span style="color:#aaa;">—</span>';
+
+      return `
+        <tr>
+          <td style="font-family:monospace;">${escHtml(item.ip)}</td>
+          <td>${escHtml(country)}</td>
+          <td>${escHtml(continent)}</td>
+          <td style="font-family:monospace;font-size:.82rem;">${escHtml(asn)}</td>
+          <td style="font-size:.82rem;">${escHtml(asName)}</td>
+          <td style="font-size:.82rem;">${escHtml(asDomain)}</td>
+          <td>${errText}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.textContent = msg;
+    box.style.display = 'block';
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  loadResults();
+</script>
+{% endblock %}

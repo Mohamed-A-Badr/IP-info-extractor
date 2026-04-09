@@ -1,0 +1,101 @@
+{% extends "ip_lookup/base.html" %}
+{% block title %}Batches — IP Info Extractor{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2>IP Lookup Batches</h2>
+  <a href="{% url 'submit' %}" class="btn">+ Submit New Batch</a>
+</div>
+
+{% if batches %}
+<table id="batch-table">
+  <thead>
+    <tr>
+      <th>Batch ID</th>
+      <th>Status</th>
+      <th>Progress</th>
+      <th>Submitted</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for batch in batches %}
+    <tr id="row-{{ batch.id }}" data-batch-id="{{ batch.id }}" data-status="{{ batch.status }}">
+      <td style="font-family:monospace;font-size:.8rem;">{{ batch.id }}</td>
+      <td>
+        <span class="badge badge-{{ batch.status }}" id="status-{{ batch.id }}">
+          {{ batch.status }}
+        </span>
+      </td>
+      <td>
+        <span id="progress-{{ batch.id }}">{{ batch.completed }}</span> / {{ batch.total }}
+      </td>
+      <td style="font-size:.8rem;color:#666;">{{ batch.created_at|date:"Y-m-d H:i:s" }}</td>
+      <td id="actions-{{ batch.id }}">
+        {% if batch.status == "completed" %}
+          <a href="{% url 'batch-detail' batch.id %}" class="link">View Results</a>
+        {% else %}
+          <span style="color:#999;font-size:.8rem;">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="color:#666;margin-top:2rem;text-align:center;">
+  No batches yet. <a href="{% url 'submit' %}" class="link">Submit your first batch.</a>
+</p>
+{% endif %}
+
+<script>
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+  function connectBatchSocket(batchId) {
+    const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/batch/${batchId}/`);
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === 'batch.progress') {
+        const progressEl = document.getElementById(`progress-${batchId}`);
+        if (progressEl) progressEl.textContent = msg.completed;
+
+        const statusEl = document.getElementById(`status-${batchId}`);
+        if (statusEl) {
+          statusEl.textContent = 'processing';
+          statusEl.className = 'badge badge-processing';
+        }
+
+        const row = document.getElementById(`row-${batchId}`);
+        if (row) row.dataset.status = 'processing';
+      }
+
+      if (msg.type === 'batch.complete') {
+        const statusEl = document.getElementById(`status-${batchId}`);
+        if (statusEl) {
+          statusEl.textContent = 'completed';
+          statusEl.className = 'badge badge-completed';
+        }
+
+        const actionsEl = document.getElementById(`actions-${batchId}`);
+        if (actionsEl) {
+          actionsEl.innerHTML = `<a href="/batch/${batchId}/" class="link">View Results</a>`;
+        }
+
+        const row = document.getElementById(`row-${batchId}`);
+        if (row) row.dataset.status = 'completed';
+
+        ws.close();
+      }
+    };
+
+    ws.onerror = () => ws.close();
+  }
+
+  // Open a WebSocket for every row that is still processing when the page loads
+  document.querySelectorAll('tr[data-status="processing"]').forEach(row => {
+    connectBatchSocket(row.dataset.batchId);
+  });
+</script>
+{% endblock %}
