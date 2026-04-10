@@ -142,6 +142,40 @@ Event types pushed by the server:
 | `batch.progress` | `{ ip, data, error, completed, total }` |
 | `batch.complete` | `{ batch_id, status }`                  |
 
+## Running Tests
+
+The test suite uses a real in-memory SQLite database (no mocking). It covers models, serializers, API views, Celery tasks, and WebSocket consumers.
+
+### With Docker (recommended)
+
+```bash
+docker compose exec backend python manage.py test
+```
+
+### Locally
+
+```bash
+python manage.py test
+```
+
+To run a specific test class or method:
+
+```bash
+# Single class
+docker compose exec backend python manage.py test ip_lookup.tests.FetchIPInfoTaskTest
+
+# Single test
+docker compose exec backend python manage.py test ip_lookup.tests.FetchIPInfoTaskTest.test_successful_lookup_creates_ipinfo_record
+```
+
+Add `--verbosity=2` to see each test name as it runs:
+
+```bash
+docker compose exec backend python manage.py test --verbosity=2
+```
+
+> **Note:** No Redis connection is required to run the tests. Celery tasks run eagerly (inline) and WebSocket consumers use an in-memory channel layer.
+
 ## Running Without Docker (local development)
 
 ### 1. Create a virtual environment
