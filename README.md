@@ -76,7 +76,7 @@ IP_INFO_API_TOKEN=<your-ipinfo-api-token>
 ### 3. Start all services
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
 This starts four containers:
