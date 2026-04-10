@@ -1,3 +1,4 @@
+import logging
 import os
 
 import httpx
@@ -7,6 +8,8 @@ from channels.layers import get_channel_layer
 from django.db.models import F
 
 from .models import IPInfo, IPLookupBatch
+
+logger = logging.getLogger(__name__)
 
 API_TOKEN = os.getenv("IP_INFO_API_TOKEN", "")
 
@@ -25,18 +28,22 @@ def fetch_ip_info(self, batch_id: str, ip: str):
     except httpx.HTTPStatusError as exc:
         data = None
         error = f"HTTP {exc.response.status_code}: {exc.response.text}"
+        logger.warning("IP lookup failed for %s (batch %s): %s", ip, batch_id, error)
     except Exception as exc:
         data = None
         error = str(exc)
+        logger.exception("Unexpected error fetching IP %s (batch %s)", ip, batch_id)
 
     IPInfo.objects.create(batch_id=batch_id, ip=ip, error=error, data=data)
 
-    # Atomically increment; read back the new value for the progress message
     IPLookupBatch.objects.filter(id=batch_id).update(completed=F("completed") + 1)
-    batch = IPLookupBatch.objects.get(id=batch_id)
+    batch = IPLookupBatch.objects.only("completed", "total").get(id=batch_id)
 
     channel_layer = get_channel_layer()
     if channel_layer is None:
+        logger.error(
+            "No channel layer configured — WebSocket notifications are disabled."
+        )
         return
 
     group_name = f"batch_{batch_id}"
@@ -53,9 +60,6 @@ def fetch_ip_info(self, batch_id: str, ip: str):
         },
     )
 
-    # Atomic completion check — only the task whose increment hit the total wins.
-    # The filter matches only while status is still 'processing' AND completed == total,
-    # so even if two tasks race here, exactly one UPDATE succeeds (returns 1).
     just_completed = IPLookupBatch.objects.filter(
         id=batch_id,
         completed=F("total"),
@@ -63,6 +67,7 @@ def fetch_ip_info(self, batch_id: str, ip: str):
     ).update(status=IPLookupBatch.STATUS_COMPLETED)
 
     if just_completed:
+        logger.info("Batch %s completed.", batch_id)
         async_to_sync(channel_layer.group_send)(
             group_name,
             {

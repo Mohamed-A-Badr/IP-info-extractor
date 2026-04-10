@@ -10,8 +10,6 @@ from .serializers import IPLookupBatchSerializer, IPListSerializer, IPInfoSerial
 from .tasks import fetch_ip_info
 
 
-# ── DRF API views ─────────────────────────────────────────────────────────────
-
 class IPLookupBatchView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -53,10 +51,13 @@ class IPInfoView(APIView):
         return Response(serializer.data)
 
 
-# ── Template views (UI) ────────────────────────────────────────────────────────
-
 async def home_view(request):
-    batches = [b async for b in IPLookupBatch.objects.order_by("-created_at")]
+    # Exclude the `ips` JSONField — it can be large and the home page never needs it.
+    batches = [
+        b async for b in IPLookupBatch.objects
+        .only("id", "status", "total", "completed", "created_at")
+        .order_by("-created_at")[:50]
+    ]
     return render(request, "ip_lookup/home.html", {"batches": batches})
 
 
